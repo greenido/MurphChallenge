@@ -5,6 +5,7 @@
 const App = {
   state: null,
   elements: {},
+  deferredInstallPrompt: null, // For Android's beforeinstallprompt
   
   /**
    * Initialize the application
@@ -14,6 +15,7 @@ const App = {
     this.initTheme();
     this.bindEvents();
     this.checkForSavedWorkout();
+    this.initInstallPrompt();
   },
   
   /**
@@ -71,7 +73,17 @@ const App = {
       finishEarlyModal: document.getElementById('finish-early-modal'),
       finishEarlyBackdrop: document.getElementById('finish-early-backdrop'),
       cancelFinishEarlyBtn: document.getElementById('cancel-finish-early-btn'),
-      confirmFinishEarlyBtn: document.getElementById('confirm-finish-early-btn')
+      confirmFinishEarlyBtn: document.getElementById('confirm-finish-early-btn'),
+      
+      // Install modal
+      installBtn: document.getElementById('install-btn'),
+      installModal: document.getElementById('install-modal'),
+      installBackdrop: document.getElementById('install-backdrop'),
+      closeInstallBtn: document.getElementById('close-install-btn'),
+      iosInstructions: document.getElementById('ios-instructions'),
+      androidInstructions: document.getElementById('android-instructions'),
+      nativeInstallBtn: document.getElementById('native-install-btn'),
+      dontShowInstall: document.getElementById('dont-show-install')
     };
   },
   
@@ -160,8 +172,25 @@ const App = {
         if (this.elements.finishEarlyModal && !this.elements.finishEarlyModal.classList.contains('hidden')) {
           this.hideFinishEarlyModal();
         }
+        if (this.elements.installModal && !this.elements.installModal.classList.contains('hidden')) {
+          this.hideInstallModal();
+        }
       }
     });
+    
+    // Install modal events
+    if (this.elements.installBtn) {
+      this.elements.installBtn.addEventListener('click', () => this.showInstallModal());
+    }
+    if (this.elements.closeInstallBtn) {
+      this.elements.closeInstallBtn.addEventListener('click', () => this.hideInstallModal());
+    }
+    if (this.elements.installBackdrop) {
+      this.elements.installBackdrop.addEventListener('click', () => this.hideInstallModal());
+    }
+    if (this.elements.nativeInstallBtn) {
+      this.elements.nativeInstallBtn.addEventListener('click', () => this.triggerNativeInstall());
+    }
     
     // Reset modal
     if (this.elements.cancelResetBtn) {
@@ -925,6 +954,157 @@ const App = {
     this.elements.completionScreen.classList.add('hidden');
     this.elements.startScreen.classList.remove('hidden');
     this.elements.resumeBtn.classList.add('hidden');
+  },
+  
+  /**
+   * Initialize install prompt functionality
+   */
+  initInstallPrompt() {
+    // Check if app is already installed (standalone mode)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+      || window.navigator.standalone === true;
+    
+    if (isStandalone) {
+      // App is already installed, don't show install button
+      return;
+    }
+    
+    // Check if user dismissed the install prompt before
+    const installDismissed = localStorage.getItem('murph_install_dismissed');
+    if (installDismissed === 'true') {
+      return;
+    }
+    
+    // Detect if mobile
+    const isMobile = this.isMobileDevice();
+    
+    if (isMobile && this.elements.installBtn) {
+      // Show install button on mobile
+      this.elements.installBtn.classList.remove('hidden');
+      
+      // Auto-show install modal after a delay on first visit (only once)
+      const hasSeenInstallPrompt = localStorage.getItem('murph_install_seen');
+      if (!hasSeenInstallPrompt) {
+        setTimeout(() => {
+          this.showInstallModal();
+          localStorage.setItem('murph_install_seen', 'true');
+        }, 2000);
+      }
+    }
+    
+    // Listen for beforeinstallprompt (Android/Chrome)
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Save the event so it can be triggered later
+      this.deferredInstallPrompt = e;
+      
+      // Show install button
+      if (this.elements.installBtn) {
+        this.elements.installBtn.classList.remove('hidden');
+      }
+    });
+    
+    // Listen for successful install
+    window.addEventListener('appinstalled', () => {
+      // Hide install button
+      if (this.elements.installBtn) {
+        this.elements.installBtn.classList.add('hidden');
+      }
+      this.hideInstallModal();
+      // Clear deferred prompt
+      this.deferredInstallPrompt = null;
+    });
+  },
+  
+  /**
+   * Detect if current device is mobile
+   */
+  isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+      || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+  },
+  
+  /**
+   * Detect if iOS device
+   */
+  isIOS() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) 
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  },
+  
+  /**
+   * Show install modal with platform-specific instructions
+   */
+  showInstallModal() {
+    if (!this.elements.installModal) return;
+    
+    // Determine platform and show appropriate instructions
+    const isIOS = this.isIOS();
+    
+    if (this.elements.iosInstructions) {
+      this.elements.iosInstructions.classList.toggle('hidden', !isIOS);
+    }
+    if (this.elements.androidInstructions) {
+      this.elements.androidInstructions.classList.toggle('hidden', isIOS);
+    }
+    
+    // Show native install button if we have a deferred prompt (Android)
+    if (this.elements.nativeInstallBtn) {
+      this.elements.nativeInstallBtn.classList.toggle('hidden', !this.deferredInstallPrompt);
+      // Hide manual instructions if native prompt available
+      if (this.deferredInstallPrompt && this.elements.androidInstructions) {
+        this.elements.androidInstructions.classList.add('hidden');
+      }
+    }
+    
+    this.elements.installModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  },
+  
+  /**
+   * Hide install modal
+   */
+  hideInstallModal() {
+    if (!this.elements.installModal) return;
+    
+    // Check if user doesn't want to see again
+    if (this.elements.dontShowInstall && this.elements.dontShowInstall.checked) {
+      localStorage.setItem('murph_install_dismissed', 'true');
+      // Also hide the install button
+      if (this.elements.installBtn) {
+        this.elements.installBtn.classList.add('hidden');
+      }
+    }
+    
+    this.elements.installModal.classList.add('hidden');
+    document.body.style.overflow = '';
+  },
+  
+  /**
+   * Trigger native install prompt (Android)
+   */
+  async triggerNativeInstall() {
+    if (!this.deferredInstallPrompt) return;
+    
+    // Show the install prompt
+    this.deferredInstallPrompt.prompt();
+    
+    // Wait for the user to respond to the prompt
+    const { outcome } = await this.deferredInstallPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      // User accepted, hide modal
+      this.hideInstallModal();
+    }
+    
+    // Clear the deferred prompt
+    this.deferredInstallPrompt = null;
+    
+    // Hide the native install button
+    if (this.elements.nativeInstallBtn) {
+      this.elements.nativeInstallBtn.classList.add('hidden');
+    }
   }
 };
 
