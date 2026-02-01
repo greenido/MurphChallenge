@@ -125,7 +125,7 @@ const App = {
       this.elements.copyStatsBtn.addEventListener('click', () => this.copyStats());
     }
     if (this.elements.emailStatsBtn) {
-      this.elements.emailStatsBtn.addEventListener('click', () => this.emailStats());
+      this.elements.emailStatsBtn.addEventListener('click', (e) => this.emailStats(e));
     }
     
     // Help modal
@@ -751,20 +751,21 @@ const App = {
   /**
    * Share stats via email
    */
-  emailStats() {
+  emailStats(e) {
+    // Prevent any default behavior and stop propagation
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     const workoutType = this.state.isHalfMurph ? 'Half Murph' : 'Murph Challenge';
     const subject = encodeURIComponent(`${workoutType} Complete!`);
     const body = encodeURIComponent(this.generateStatsText());
     
     const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
     
-    // Create a temporary link element for better cross-browser/mobile compatibility
-    const link = document.createElement('a');
-    link.href = mailtoLink;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Use window.location.href for better cross-browser compatibility
+    window.location.href = mailtoLink;
   },
   
   /**
