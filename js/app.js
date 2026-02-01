@@ -54,7 +54,10 @@ const App = {
       statsReps: document.getElementById('stats-reps'),
       workoutTypeBadge: document.getElementById('workout-type-badge'),
       copyStatsBtn: document.getElementById('copy-stats-btn'),
-      emailStatsBtn: document.getElementById('email-stats-btn'),
+      shareTwitterBtn: document.getElementById('share-twitter-btn'),
+      shareFacebookBtn: document.getElementById('share-facebook-btn'),
+      shareWhatsappBtn: document.getElementById('share-whatsapp-btn'),
+      shareLinkedinBtn: document.getElementById('share-linkedin-btn'),
       newWorkoutBtn: document.getElementById('new-workout-btn'),
       
       // Modals
@@ -124,8 +127,17 @@ const App = {
     if (this.elements.copyStatsBtn) {
       this.elements.copyStatsBtn.addEventListener('click', () => this.copyStats());
     }
-    if (this.elements.emailStatsBtn) {
-      this.elements.emailStatsBtn.addEventListener('click', (e) => this.emailStats(e));
+    if (this.elements.shareTwitterBtn) {
+      this.elements.shareTwitterBtn.addEventListener('click', () => this.shareOnTwitter());
+    }
+    if (this.elements.shareFacebookBtn) {
+      this.elements.shareFacebookBtn.addEventListener('click', () => this.shareOnFacebook());
+    }
+    if (this.elements.shareWhatsappBtn) {
+      this.elements.shareWhatsappBtn.addEventListener('click', () => this.shareOnWhatsapp());
+    }
+    if (this.elements.shareLinkedinBtn) {
+      this.elements.shareLinkedinBtn.addEventListener('click', () => this.shareOnLinkedin());
     }
     
     // Help modal
@@ -749,23 +761,112 @@ const App = {
   },
   
   /**
-   * Share stats via email
+   * Generate short share text for social media
    */
-  emailStats(e) {
-    // Prevent any default behavior and stop propagation
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
+  generateShareText() {
+    const workoutType = this.state.isHalfMurph ? 'Half Murph' : 'Murph Challenge';
+    const timeText = this.state.timerEnabled ? Timer.format(this.state.elapsedTime) : '';
+    
+    let totalReps = 0;
+    this.state.sections.forEach(s => {
+      if (s.type === 'reps') totalReps += s.completed;
+    });
+    
+    const isFullyComplete = this.state.sections.every(section => {
+      if (section.type === 'checkbox') return section.completed;
+      return section.completed >= section.total;
+    });
+    
+    const completionStatus = isFullyComplete ? 'Complete!' : 'Completed (Partial)';
+    
+    let text = `${workoutType} ${completionStatus}`;
+    if (timeText) text += ` | Time: ${timeText}`;
+    text += ` | ${totalReps} total reps`;
+    text += ` | In honor of Lt. Michael P. Murphy 🎖️`;
+    text += ` #MurphChallenge #Workout #Fitness`;
+    
+    return text;
+  },
+  
+  /**
+   * Share on Twitter/X
+   */
+  shareOnTwitter() {
+    const text = encodeURIComponent(this.generateShareText());
+    const url = `https://twitter.com/intent/tweet?text=${text}`;
+    window.open(url, '_blank', 'width=550,height=420');
+  },
+  
+  /**
+   * Share on Facebook (copies full stats to clipboard first)
+   */
+  async shareOnFacebook() {
+    // Copy full stats to clipboard so user can paste in Facebook
+    try {
+      await navigator.clipboard.writeText(this.generateStatsText());
+      this.showShareToast('Results copied! Paste in your Facebook post.');
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
     
-    const workoutType = this.state.isHalfMurph ? 'Half Murph' : 'Murph Challenge';
-    const subject = encodeURIComponent(`${workoutType} Complete!`);
-    const body = encodeURIComponent(this.generateStatsText());
+    // Open Facebook share dialog
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://greenido.wordpress.com')}`;
+    window.open(url, '_blank', 'width=550,height=420');
+  },
+  
+  /**
+   * Share on WhatsApp (uses full stats)
+   */
+  shareOnWhatsapp() {
+    const text = encodeURIComponent(this.generateStatsText());
+    const url = `https://wa.me/?text=${text}`;
+    window.open(url, '_blank');
+  },
+  
+  /**
+   * Share on LinkedIn (copies full stats to clipboard first)
+   */
+  async shareOnLinkedin() {
+    // Copy full stats to clipboard so user can paste in LinkedIn
+    try {
+      await navigator.clipboard.writeText(this.generateStatsText());
+      this.showShareToast('Results copied! Paste in your LinkedIn post.');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
     
-    const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+    // Open LinkedIn share dialog
+    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://greenido.wordpress.com')}`;
+    window.open(url, '_blank', 'width=550,height=420');
+  },
+  
+  /**
+   * Show a toast notification for share actions
+   */
+  showShareToast(message) {
+    // Remove existing toast if any
+    const existingToast = document.getElementById('share-toast');
+    if (existingToast) existingToast.remove();
     
-    // Use window.location.href for better cross-browser compatibility
-    window.location.href = mailtoLink;
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.id = 'share-toast';
+    toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-gray-900 dark:bg-gray-700 text-white px-4 py-3 rounded-xl shadow-lg z-[200] flex items-center gap-2 animate-pulse';
+    toast.innerHTML = `
+      <svg class="w-5 h-5 text-murph-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+      </svg>
+      <span>${message}</span>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Remove toast after 3 seconds
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   },
   
   /**

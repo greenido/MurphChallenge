@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Murph Challenge - Test Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .test-pass { background-color: #10b981; }
+    .test-fail { background-color: #ef4444; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+  </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-bold mb-2">🏋️ Murph Challenge Test Suite</h1>
+      <p class="text-gray-400">Unit and Integration Tests for the Murph Challenge Tracker</p>
+    </div>
+
+    <!-- Controls -->
+    <div class="bg-gray-800 rounded-xl p-6 mb-8">
+      <div class="flex flex-wrap gap-4 justify-center">
+        <button id="run-all" class="bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded-lg font-semibold transition-colors">
+          Run All Tests
+        </button>
+        <button id="run-timer" class="bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg font-semibold transition-colors">
+          Timer Tests
+        </button>
+        <button id="run-storage" class="bg-purple-600 hover:bg-purple-700 px-4 py-3 rounded-lg font-semibold transition-colors">
+          Storage Tests
+        </button>
+        <button id="run-app" class="bg-orange-600 hover:bg-orange-700 px-4 py-3 rounded-lg font-semibold transition-colors">
+          App Tests
+        </button>
+        <button id="run-integration" class="bg-pink-600 hover:bg-pink-700 px-4 py-3 rounded-lg font-semibold transition-colors">
+          Integration Tests
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div id="summary" class="bg-gray-800 rounded-xl p-6 mb-8 hidden">
+      <h2 class="text-2xl font-bold mb-4">Test Summary</h2>
+      <div class="grid grid-cols-3 gap-4 text-center">
+        <div class="bg-gray-700 rounded-lg p-4">
+          <p class="text-3xl font-bold" id="total-count">0</p>
+          <p class="text-gray-400">Total Tests</p>
+        </div>
+        <div class="bg-emerald-600/20 rounded-lg p-4">
+          <p class="text-3xl font-bold text-emerald-400" id="pass-count">0</p>
+          <p class="text-gray-400">Passed</p>
+        </div>
+        <div class="bg-red-600/20 rounded-lg p-4">
+          <p class="text-3xl font-bold text-red-400" id="fail-count">0</p>
+          <p class="text-gray-400">Failed</p>
+        </div>
+      </div>
+      <div class="mt-4">
+        <div class="h-4 bg-gray-700 rounded-full overflow-hidden">
+          <div id="progress-bar" class="h-full bg-emerald-500 transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p class="text-center mt-2 text-gray-400">
+          <span id="pass-rate">0</span>% Pass Rate
+        </p>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="space-y-4">
+      <!-- Test results will be rendered here -->
+    </div>
+
+    <!-- Instructions -->
+    <div class="mt-8 bg-gray-800 rounded-xl p-6">
+      <h2 class="text-xl font-bold mb-4">📋 Test Coverage</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <h3 class="font-semibold text-emerald-400 mb-2">Timer Module</h3>
+          <ul class="text-gray-400 text-sm space-y-1">
+            <li>• Time formatting (HH:MM:SS)</li>
+            <li>• Elapsed time calculation</li>
+            <li>• Start/pause/resume functionality</li>
+            <li>• Timer state management</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-semibold text-purple-400 mb-2">Storage Module</h3>
+          <ul class="text-gray-400 text-sm space-y-1">
+            <li>• Default state generation</li>
+            <li>• Full vs Half Murph configuration</li>
+            <li>• Save/load workout state</li>
+            <li>• Theme persistence</li>
+            <li>• Active workout detection</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-semibold text-orange-400 mb-2">App Module</h3>
+          <ul class="text-gray-400 text-sm space-y-1">
+            <li>• Workout completion detection</li>
+            <li>• Stats text generation</li>
+            <li>• Progress calculation</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-semibold text-pink-400 mb-2">Integration Tests</h3>
+          <ul class="text-gray-400 text-sm space-y-1">
+            <li>• Adding reps functionality</li>
+            <li>• Undo reps functionality</li>
+            <li>• Toggle run completion</li>
+            <li>• Progress percentage calculation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center mt-8 text-gray-500 text-sm">
+      <p>Open the browser console (F12) for detailed test output</p>
+      <a href="index.html" class="text-emerald-400 hover:underline mt-2 inline-block">← Back to App</a>
+    </div>
+  </div>
+
+  <!-- Load application modules -->
+  <script src="js/storage.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/tests.js"></script>
+
+  <script>
+    // UI interaction
+    document.addEventListener('DOMContentLoaded', () => {
+      const summaryEl = document.getElementById('summary');
+      const resultsEl = document.getElementById('results');
+      
+      function displayResults(results) {
+        summaryEl.classList.remove('hidden');
+        
+        // Update summary
+        document.getElementById('total-count').textContent = results.total;
+        document.getElementById('pass-count').textContent = results.passed;
+        document.getElementById('fail-count').textContent = results.failed;
+        
+        const passRate = results.total > 0 ? Math.round((results.passed / results.total) * 100) : 0;
+        document.getElementById('pass-rate').textContent = passRate;
+        document.getElementById('progress-bar').style.width = `${passRate}%`;
+        
+        if (passRate === 100) {
+          document.getElementById('progress-bar').classList.remove('bg-emerald-500');
+          document.getElementById('progress-bar').classList.add('bg-emerald-400');
+        } else if (passRate >= 80) {
+          document.getElementById('progress-bar').classList.add('bg-emerald-500');
+        } else if (passRate >= 50) {
+          document.getElementById('progress-bar').classList.remove('bg-emerald-500');
+          document.getElementById('progress-bar').classList.add('bg-yellow-500');
+        } else {
+          document.getElementById('progress-bar').classList.remove('bg-emerald-500');
+          document.getElementById('progress-bar').classList.add('bg-red-500');
+        }
+        
+        // Group results by category
+        const categories = {
+          'Timer': [],
+          'Storage': [],
+          'App': [],
+          'Integration': []
+        };
+        
+        results.results.forEach(result => {
+          if (result.name.includes('Timer.')) {
+            categories['Timer'].push(result);
+          } else if (result.name.includes('Storage.') || result.name.includes('hasActiveWorkout') || result.name.includes('clearWorkout') || result.name.includes('saveTheme') || result.name.includes('loadTheme')) {
+            categories['Storage'].push(result);
+          } else if (result.name.includes('App.') || result.name.includes('generateStatsText')) {
+            categories['App'].push(result);
+          } else {
+            categories['Integration'].push(result);
+          }
+        });
+        
+        // Render results
+        resultsEl.innerHTML = '';
+        
+        Object.entries(categories).forEach(([category, tests]) => {
+          if (tests.length === 0) return;
+          
+          const categoryColors = {
+            'Timer': 'blue',
+            'Storage': 'purple',
+            'App': 'orange',
+            'Integration': 'pink'
+          };
+          const color = categoryColors[category];
+          
+          const passedInCategory = tests.filter(t => t.passed).length;
+          
+          const categoryEl = document.createElement('div');
+          categoryEl.className = 'bg-gray-800 rounded-xl p-4 fade-in';
+          categoryEl.innerHTML = `
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-lg font-bold text-${color}-400">${category} Module Tests</h3>
+              <span class="text-sm ${passedInCategory === tests.length ? 'text-emerald-400' : 'text-gray-400'}">
+                ${passedInCategory}/${tests.length} passed
+              </span>
+            </div>
+            <div class="space-y-2">
+              ${tests.map(test => `
+                <div class="flex items-center gap-3 py-2 px-3 rounded-lg ${test.passed ? 'bg-emerald-600/10' : 'bg-red-600/10'}">
+                  <span class="text-lg">${test.passed ? '✅' : '❌'}</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm ${test.passed ? 'text-emerald-300' : 'text-red-300'} truncate">${test.name}</p>
+                    ${test.error ? `<p class="text-xs text-red-400 mt-1">${test.error}</p>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+          resultsEl.appendChild(categoryEl);
+        });
+      }
+      
+      function runTests(testFn) {
+        TestRunner.reset();
+        resultsEl.innerHTML = '<p class="text-center text-gray-400">Running tests...</p>';
+        
+        setTimeout(() => {
+          testFn();
+          const results = TestRunner.summary();
+          displayResults(results);
+        }, 100);
+      }
+      
+      document.getElementById('run-all').addEventListener('click', () => {
+        runTests(() => {
+          runTimerTests();
+          runStorageTests();
+          runAppTests();
+          runIntegrationTests();
+        });
+      });
+      
+      document.getElementById('run-timer').addEventListener('click', () => {
+        runTests(runTimerTests);
+      });
+      
+      document.getElementById('run-storage').addEventListener('click', () => {
+        runTests(runStorageTests);
+      });
+      
+      document.getElementById('run-app').addEventListener('click', () => {
+        runTests(runAppTests);
+      });
+      
+      document.getElementById('run-integration').addEventListener('click', () => {
+        runTests(runIntegrationTests);
+      });
+    });
+  </script>
+</body>
+</html>
