@@ -64,7 +64,11 @@ const App = {
       resetModal: document.getElementById('reset-modal'),
       resetBackdrop: document.getElementById('reset-backdrop'),
       cancelResetBtn: document.getElementById('cancel-reset-btn'),
-      confirmResetBtn: document.getElementById('confirm-reset-btn')
+      confirmResetBtn: document.getElementById('confirm-reset-btn'),
+      finishEarlyModal: document.getElementById('finish-early-modal'),
+      finishEarlyBackdrop: document.getElementById('finish-early-backdrop'),
+      cancelFinishEarlyBtn: document.getElementById('cancel-finish-early-btn'),
+      confirmFinishEarlyBtn: document.getElementById('confirm-finish-early-btn')
     };
   },
   
@@ -141,6 +145,9 @@ const App = {
         if (this.elements.resetModal && !this.elements.resetModal.classList.contains('hidden')) {
           this.hideResetModal();
         }
+        if (this.elements.finishEarlyModal && !this.elements.finishEarlyModal.classList.contains('hidden')) {
+          this.hideFinishEarlyModal();
+        }
       }
     });
     
@@ -153,6 +160,17 @@ const App = {
     }
     if (this.elements.confirmResetBtn) {
       this.elements.confirmResetBtn.addEventListener('click', () => this.confirmReset());
+    }
+    
+    // Finish early modal
+    if (this.elements.cancelFinishEarlyBtn) {
+      this.elements.cancelFinishEarlyBtn.addEventListener('click', () => this.hideFinishEarlyModal());
+    }
+    if (this.elements.finishEarlyBackdrop) {
+      this.elements.finishEarlyBackdrop.addEventListener('click', () => this.hideFinishEarlyModal());
+    }
+    if (this.elements.confirmFinishEarlyBtn) {
+      this.elements.confirmFinishEarlyBtn.addEventListener('click', () => this.confirmFinishEarly());
     }
   },
   
@@ -543,9 +561,8 @@ const App = {
     this.elements.overallProgressBar.style.width = `${percentage}%`;
     this.elements.overallProgressText.textContent = `${percentage}%`;
     
-    // Enable/disable finish button
-    const allComplete = this.isWorkoutComplete();
-    this.elements.finishWorkoutBtn.disabled = !allComplete;
+    // Always enable finish button - user can finish early with confirmation
+    this.elements.finishWorkoutBtn.disabled = false;
   },
   
   /**
@@ -573,9 +590,46 @@ const App = {
   },
   
   /**
-   * Finish the workout
+   * Finish the workout (with confirmation if incomplete)
    */
   finishWorkout() {
+    // Check if workout is complete
+    if (!this.isWorkoutComplete()) {
+      this.showFinishEarlyModal();
+      return;
+    }
+    
+    this.completeWorkout();
+  },
+  
+  /**
+   * Show confirmation modal for finishing early
+   */
+  showFinishEarlyModal() {
+    this.elements.finishEarlyModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  },
+  
+  /**
+   * Hide finish early modal
+   */
+  hideFinishEarlyModal() {
+    this.elements.finishEarlyModal.classList.add('hidden');
+    document.body.style.overflow = '';
+  },
+  
+  /**
+   * Confirm finishing early
+   */
+  confirmFinishEarly() {
+    this.hideFinishEarlyModal();
+    this.completeWorkout();
+  },
+  
+  /**
+   * Actually complete the workout
+   */
+  completeWorkout() {
     // Stop timer and get final time
     const finalElapsed = Timer.getElapsed(this.state);
     Timer.stop();
@@ -607,16 +661,20 @@ const App = {
    * Update completion screen stats
    */
   updateCompletionStats() {
-    // Calculate total reps
+    // Calculate total reps and runs
     let totalReps = 0;
+    let completedRuns = 0;
+    
     this.state.sections.forEach(section => {
       if (section.type === 'reps') {
         totalReps += section.completed;
+      } else if (section.type === 'checkbox' && section.completed) {
+        completedRuns++;
       }
     });
     
     // Update display
-    this.elements.statsRuns.textContent = '2';
+    this.elements.statsRuns.textContent = completedRuns.toString();
     this.elements.statsReps.textContent = totalReps.toString();
     
     // Show/hide half murph badge
@@ -634,10 +692,16 @@ const App = {
     const workoutType = this.state.isHalfMurph ? 'Half Murph' : 'Murph Challenge';
     const timeText = this.state.timerEnabled ? Timer.format(this.state.elapsedTime) : 'No timer';
     
+    // Check if workout was fully completed
+    const isFullyComplete = this.state.sections.every(section => {
+      if (section.type === 'checkbox') return section.completed;
+      return section.completed >= section.total;
+    });
+    
     // Get section details
     const sections = this.state.sections.map(s => {
       if (s.type === 'checkbox') {
-        return `${s.icon} ${s.name}: Done`;
+        return `${s.icon} ${s.name}: ${s.completed ? 'Done' : 'Not completed'}`;
       }
       return `${s.icon} ${s.name}: ${s.completed}/${s.total}`;
     }).join('\n');
@@ -647,7 +711,9 @@ const App = {
       if (s.type === 'reps') totalReps += s.completed;
     });
     
-    return `${workoutType} Complete!\n\nTime: ${timeText}\nTotal Reps: ${totalReps}\n\n${sections}\n\n"In honor of Lt. Michael P. Murphy"`;
+    const completionStatus = isFullyComplete ? 'Complete!' : 'Completed (Partial)';
+    
+    return `${workoutType} ${completionStatus}\n\nTime: ${timeText}\nTotal Reps: ${totalReps}\n\n${sections}\n\n"In honor of Lt. Michael P. Murphy"`;
   },
   
   /**
@@ -690,7 +756,15 @@ const App = {
     const subject = encodeURIComponent(`${workoutType} Complete!`);
     const body = encodeURIComponent(this.generateStatsText());
     
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+    
+    // Create a temporary link element for better cross-browser/mobile compatibility
+    const link = document.createElement('a');
+    link.href = mailtoLink;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   },
   
   /**
