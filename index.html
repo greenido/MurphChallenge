@@ -513,15 +513,5 @@
   <script src="js/timer.js"></script>
   <script src="js/app.js"></script>
   
-  <!-- Service Worker Registration -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then(reg => console.log('SW registered'))
-          .catch(err => console.log('SW registration failed:', err));
-      });
-    }
-  </script>
 </body>
 </html>

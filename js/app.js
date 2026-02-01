@@ -81,18 +81,34 @@ const App = {
    */
   bindEvents() {
     // Theme toggle
-    this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
+    if (this.elements.themeToggle) {
+      this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
+    }
     
     // Start screen
-    this.elements.startBtn.addEventListener('click', () => this.startNewWorkout());
-    this.elements.resumeBtn.addEventListener('click', () => this.resumeWorkout());
-    this.elements.helpBtnStart.addEventListener('click', () => this.showHelp());
+    if (this.elements.startBtn) {
+      this.elements.startBtn.addEventListener('click', () => this.startNewWorkout());
+    }
+    if (this.elements.resumeBtn) {
+      this.elements.resumeBtn.addEventListener('click', () => this.resumeWorkout());
+    }
+    if (this.elements.helpBtnStart) {
+      this.elements.helpBtnStart.addEventListener('click', () => this.showHelp());
+    }
     
     // Workout screen
-    this.elements.pauseBtn.addEventListener('click', () => this.pauseTimer());
-    this.elements.resumeTimerBtn.addEventListener('click', () => this.resumeTimer());
-    this.elements.resetWorkoutBtn.addEventListener('click', () => this.showResetModal());
-    this.elements.finishWorkoutBtn.addEventListener('click', () => this.finishWorkout());
+    if (this.elements.pauseBtn) {
+      this.elements.pauseBtn.addEventListener('click', () => this.pauseTimer());
+    }
+    if (this.elements.resumeTimerBtn) {
+      this.elements.resumeTimerBtn.addEventListener('click', () => this.resumeTimer());
+    }
+    if (this.elements.resetWorkoutBtn) {
+      this.elements.resetWorkoutBtn.addEventListener('click', () => this.showResetModal());
+    }
+    if (this.elements.finishWorkoutBtn) {
+      this.elements.finishWorkoutBtn.addEventListener('click', () => this.finishWorkout());
+    }
     if (this.elements.helpBtnWorkout) {
       this.elements.helpBtnWorkout.addEventListener('click', () => this.showHelp());
     }
@@ -119,19 +135,25 @@ const App = {
     // ESC key to close modals
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        if (!this.elements.helpModal.classList.contains('hidden')) {
+        if (this.elements.helpModal && !this.elements.helpModal.classList.contains('hidden')) {
           this.hideHelp();
         }
-        if (!this.elements.resetModal.classList.contains('hidden')) {
+        if (this.elements.resetModal && !this.elements.resetModal.classList.contains('hidden')) {
           this.hideResetModal();
         }
       }
     });
     
     // Reset modal
-    this.elements.cancelResetBtn.addEventListener('click', () => this.hideResetModal());
-    this.elements.resetBackdrop.addEventListener('click', () => this.hideResetModal());
-    this.elements.confirmResetBtn.addEventListener('click', () => this.confirmReset());
+    if (this.elements.cancelResetBtn) {
+      this.elements.cancelResetBtn.addEventListener('click', () => this.hideResetModal());
+    }
+    if (this.elements.resetBackdrop) {
+      this.elements.resetBackdrop.addEventListener('click', () => this.hideResetModal());
+    }
+    if (this.elements.confirmResetBtn) {
+      this.elements.confirmResetBtn.addEventListener('click', () => this.confirmReset());
+    }
   },
   
   /**
@@ -146,7 +168,7 @@ const App = {
    * Check for saved workout and show resume button if exists
    */
   checkForSavedWorkout() {
-    if (Storage.hasActiveWorkout()) {
+    if (Storage.hasActiveWorkout() && this.elements.resumeBtn) {
       this.elements.resumeBtn.classList.remove('hidden');
     }
   },
@@ -155,8 +177,8 @@ const App = {
    * Start a new workout
    */
   startNewWorkout() {
-    const timerEnabled = this.elements.timerToggle.checked;
-    const isHalfMurph = this.elements.halfMurphToggle.checked;
+    const timerEnabled = this.elements.timerToggle ? this.elements.timerToggle.checked : true;
+    const isHalfMurph = this.elements.halfMurphToggle ? this.elements.halfMurphToggle.checked : false;
     
     this.state = Storage.getDefaultState(isHalfMurph);
     this.state.timerEnabled = timerEnabled;
