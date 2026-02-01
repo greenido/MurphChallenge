@@ -8,10 +8,13 @@ const Storage = {
   
   /**
    * Get default workout state
+   * @param {boolean} isHalfMurph - Whether this is a half Murph workout
    */
-  getDefaultState() {
+  getDefaultState(isHalfMurph = false) {
+    const multiplier = isHalfMurph ? 0.5 : 1;
     return {
       timerEnabled: true,
+      isHalfMurph: isHalfMurph,
       startTime: null,
       elapsedTime: 0,
       isPaused: false,
@@ -19,7 +22,7 @@ const Storage = {
       sections: [
         { 
           id: 'run1', 
-          name: 'Mile Run #1', 
+          name: isHalfMurph ? 'Half Mile Run #1' : 'Mile Run #1', 
           type: 'checkbox', 
           completed: false,
           icon: '🏃'
@@ -28,7 +31,7 @@ const Storage = {
           id: 'pullups', 
           name: 'Pull-ups', 
           type: 'reps', 
-          total: 100, 
+          total: Math.round(100 * multiplier), 
           completed: 0,
           lastAction: null,
           icon: '💪'
@@ -37,7 +40,7 @@ const Storage = {
           id: 'pushups', 
           name: 'Push-ups', 
           type: 'reps', 
-          total: 200, 
+          total: Math.round(200 * multiplier), 
           completed: 0,
           lastAction: null,
           icon: '🫸'
@@ -46,14 +49,14 @@ const Storage = {
           id: 'squats', 
           name: 'Squats', 
           type: 'reps', 
-          total: 300, 
+          total: Math.round(300 * multiplier), 
           completed: 0,
           lastAction: null,
           icon: '🦵'
         },
         { 
           id: 'run2', 
-          name: 'Mile Run #2', 
+          name: isHalfMurph ? 'Half Mile Run #2' : 'Mile Run #2', 
           type: 'checkbox', 
           completed: false,
           icon: '🏃'

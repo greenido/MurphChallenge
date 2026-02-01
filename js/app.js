@@ -28,6 +28,7 @@ const App = {
       
       // Start screen
       timerToggle: document.getElementById('timer-toggle'),
+      halfMurphToggle: document.getElementById('half-murph-toggle'),
       startBtn: document.getElementById('start-btn'),
       resumeBtn: document.getElementById('resume-btn'),
       helpBtnStart: document.getElementById('help-btn-start'),
@@ -49,6 +50,11 @@ const App = {
       // Completion screen
       finalTimeContainer: document.getElementById('final-time-container'),
       finalTime: document.getElementById('final-time'),
+      statsRuns: document.getElementById('stats-runs'),
+      statsReps: document.getElementById('stats-reps'),
+      workoutTypeBadge: document.getElementById('workout-type-badge'),
+      copyStatsBtn: document.getElementById('copy-stats-btn'),
+      emailStatsBtn: document.getElementById('email-stats-btn'),
       newWorkoutBtn: document.getElementById('new-workout-btn'),
       
       // Modals
@@ -92,11 +98,35 @@ const App = {
     }
     
     // Completion screen
-    this.elements.newWorkoutBtn.addEventListener('click', () => this.resetAndStart());
+    if (this.elements.newWorkoutBtn) {
+      this.elements.newWorkoutBtn.addEventListener('click', () => this.resetAndStart());
+    }
+    if (this.elements.copyStatsBtn) {
+      this.elements.copyStatsBtn.addEventListener('click', () => this.copyStats());
+    }
+    if (this.elements.emailStatsBtn) {
+      this.elements.emailStatsBtn.addEventListener('click', () => this.emailStats());
+    }
     
     // Help modal
-    this.elements.closeHelpBtn.addEventListener('click', () => this.hideHelp());
-    this.elements.helpBackdrop.addEventListener('click', () => this.hideHelp());
+    if (this.elements.closeHelpBtn) {
+      this.elements.closeHelpBtn.addEventListener('click', () => this.hideHelp());
+    }
+    if (this.elements.helpBackdrop) {
+      this.elements.helpBackdrop.addEventListener('click', () => this.hideHelp());
+    }
+    
+    // ESC key to close modals
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!this.elements.helpModal.classList.contains('hidden')) {
+          this.hideHelp();
+        }
+        if (!this.elements.resetModal.classList.contains('hidden')) {
+          this.hideResetModal();
+        }
+      }
+    });
     
     // Reset modal
     this.elements.cancelResetBtn.addEventListener('click', () => this.hideResetModal());
@@ -126,8 +156,9 @@ const App = {
    */
   startNewWorkout() {
     const timerEnabled = this.elements.timerToggle.checked;
+    const isHalfMurph = this.elements.halfMurphToggle.checked;
     
-    this.state = Storage.getDefaultState();
+    this.state = Storage.getDefaultState(isHalfMurph);
     this.state.timerEnabled = timerEnabled;
     
     if (timerEnabled) {
@@ -543,8 +574,101 @@ const App = {
       this.elements.finalTimeContainer.classList.add('hidden');
     }
     
+    // Update stats display
+    this.updateCompletionStats();
+    
     // Fire confetti!
     setTimeout(() => Confetti.celebrate(), 300);
+  },
+  
+  /**
+   * Update completion screen stats
+   */
+  updateCompletionStats() {
+    // Calculate total reps
+    let totalReps = 0;
+    this.state.sections.forEach(section => {
+      if (section.type === 'reps') {
+        totalReps += section.completed;
+      }
+    });
+    
+    // Update display
+    this.elements.statsRuns.textContent = '2';
+    this.elements.statsReps.textContent = totalReps.toString();
+    
+    // Show/hide half murph badge
+    if (this.state.isHalfMurph) {
+      this.elements.workoutTypeBadge.classList.remove('hidden');
+    } else {
+      this.elements.workoutTypeBadge.classList.add('hidden');
+    }
+  },
+  
+  /**
+   * Generate stats text for sharing
+   */
+  generateStatsText() {
+    const workoutType = this.state.isHalfMurph ? 'Half Murph' : 'Murph Challenge';
+    const timeText = this.state.timerEnabled ? Timer.format(this.state.elapsedTime) : 'No timer';
+    
+    // Get section details
+    const sections = this.state.sections.map(s => {
+      if (s.type === 'checkbox') {
+        return `${s.icon} ${s.name}: Done`;
+      }
+      return `${s.icon} ${s.name}: ${s.completed}/${s.total}`;
+    }).join('\n');
+    
+    let totalReps = 0;
+    this.state.sections.forEach(s => {
+      if (s.type === 'reps') totalReps += s.completed;
+    });
+    
+    return `${workoutType} Complete!\n\nTime: ${timeText}\nTotal Reps: ${totalReps}\n\n${sections}\n\n"In honor of Lt. Michael P. Murphy"`;
+  },
+  
+  /**
+   * Copy stats to clipboard
+   */
+  async copyStats() {
+    const statsText = this.generateStatsText();
+    
+    try {
+      await navigator.clipboard.writeText(statsText);
+      
+      // Visual feedback
+      const btn = this.elements.copyStatsBtn;
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <span>Copied!</span>
+      `;
+      btn.classList.add('bg-murph-accent', 'text-white');
+      btn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-white');
+      
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.classList.remove('bg-murph-accent', 'text-white');
+        btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-white');
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard');
+    }
+  },
+  
+  /**
+   * Share stats via email
+   */
+  emailStats() {
+    const workoutType = this.state.isHalfMurph ? 'Half Murph' : 'Murph Challenge';
+    const subject = encodeURIComponent(`${workoutType} Complete!`);
+    const body = encodeURIComponent(this.generateStatsText());
+    
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
   },
   
   /**
