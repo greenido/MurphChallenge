@@ -1,0 +1,21 @@
+{
+  "name": "Murph Challenge Tracker",
+  "short_name": "Murph",
+  "description": "Track your Murph Challenge workout with ease",
+  "start_url": "/MurphChallenge/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#065f46",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%23065f46' width='512' height='512' rx='96'/><text x='256' y='340' font-size='280' text-anchor='middle' fill='white'>💪</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["fitness", "health", "sports"],
+  "lang": "en-US",
+  "dir": "ltr"
+}
