@@ -236,5 +236,5 @@ This project is open source and available under the [MIT License](LICENSE).
 </p>
 
 <p align="center">
-  Made with ❤️ by <a href="https://github.com/greenido">greenido</a>
+  Made with ❤️
 </p>
