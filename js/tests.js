@@ -228,14 +228,15 @@ function runStorageTests() {
 
   // Storage.getDefaultState() tests
   TestRunner.test('Storage.getDefaultState - returns correct structure for full Murph', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     TestRunner.assertDefined(state.sections);
     TestRunner.assertLength(state.sections, 5);
     TestRunner.assertFalse(state.isHalfMurph);
+    TestRunner.assertEqual(state.workoutMode, 'full');
   });
 
   TestRunner.test('Storage.getDefaultState - has correct exercise totals for full Murph', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     const pullups = state.sections.find(s => s.id === 'pullups');
     const pushups = state.sections.find(s => s.id === 'pushups');
     const squats = state.sections.find(s => s.id === 'squats');
@@ -246,12 +247,13 @@ function runStorageTests() {
   });
 
   TestRunner.test('Storage.getDefaultState - returns correct structure for half Murph', () => {
-    const state = Storage.getDefaultState(true);
+    const state = Storage.getDefaultState('half');
     TestRunner.assertTrue(state.isHalfMurph);
+    TestRunner.assertEqual(state.workoutMode, 'half');
   });
 
   TestRunner.test('Storage.getDefaultState - has correct exercise totals for half Murph', () => {
-    const state = Storage.getDefaultState(true);
+    const state = Storage.getDefaultState('half');
     const pullups = state.sections.find(s => s.id === 'pullups');
     const pushups = state.sections.find(s => s.id === 'pushups');
     const squats = state.sections.find(s => s.id === 'squats');
@@ -261,14 +263,31 @@ function runStorageTests() {
     TestRunner.assertEqual(squats.total, 150);
   });
 
+  TestRunner.test('Storage.getDefaultState - returns correct structure for quarter Murph', () => {
+    const state = Storage.getDefaultState('quarter');
+    TestRunner.assertTrue(state.isQuarterMurph);
+    TestRunner.assertEqual(state.workoutMode, 'quarter');
+  });
+
+  TestRunner.test('Storage.getDefaultState - has correct exercise totals for quarter Murph', () => {
+    const state = Storage.getDefaultState('quarter');
+    const pullups = state.sections.find(s => s.id === 'pullups');
+    const pushups = state.sections.find(s => s.id === 'pushups');
+    const squats = state.sections.find(s => s.id === 'squats');
+    
+    TestRunner.assertEqual(pullups.total, 25);
+    TestRunner.assertEqual(pushups.total, 50);
+    TestRunner.assertEqual(squats.total, 75);
+  });
+
   TestRunner.test('Storage.getDefaultState - has two run sections', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     const runs = state.sections.filter(s => s.type === 'checkbox');
     TestRunner.assertLength(runs, 2);
   });
 
   TestRunner.test('Storage.getDefaultState - runs have correct names for full Murph', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     const run1 = state.sections.find(s => s.id === 'run1');
     const run2 = state.sections.find(s => s.id === 'run2');
     
@@ -277,7 +296,7 @@ function runStorageTests() {
   });
 
   TestRunner.test('Storage.getDefaultState - runs have correct names for half Murph', () => {
-    const state = Storage.getDefaultState(true);
+    const state = Storage.getDefaultState('half');
     const run1 = state.sections.find(s => s.id === 'run1');
     const run2 = state.sections.find(s => s.id === 'run2');
     
@@ -285,8 +304,17 @@ function runStorageTests() {
     TestRunner.assertEqual(run2.name, 'Half Mile Run #2');
   });
 
+  TestRunner.test('Storage.getDefaultState - runs have correct names for quarter Murph', () => {
+    const state = Storage.getDefaultState('quarter');
+    const run1 = state.sections.find(s => s.id === 'run1');
+    const run2 = state.sections.find(s => s.id === 'run2');
+    
+    TestRunner.assertEqual(run1.name, 'Quarter Mile Run #1');
+    TestRunner.assertEqual(run2.name, 'Quarter Mile Run #2');
+  });
+
   TestRunner.test('Storage.getDefaultState - all sections start at 0', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     state.sections.forEach(section => {
       if (section.type === 'reps') {
         TestRunner.assertEqual(section.completed, 0, `${section.name} should start at 0`);
@@ -297,10 +325,11 @@ function runStorageTests() {
   });
 
   TestRunner.test('Storage.getDefaultState - has all required fields', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     TestRunner.assertDefined(state.timerEnabled);
     TestRunner.assertDefined(state.isHalfMurph);
-    TestRunner.assertDefined(state.startTime);
+    TestRunner.assertDefined(state.workoutMode);
+    TestRunner.assertTrue('startTime' in state, 'startTime should exist in state');
     TestRunner.assertDefined(state.elapsedTime);
     TestRunner.assertDefined(state.isPaused);
     TestRunner.assertDefined(state.isComplete);
@@ -308,13 +337,13 @@ function runStorageTests() {
 
   // Storage.saveWorkout() and loadWorkout() tests
   TestRunner.test('Storage.saveWorkout - saves state to localStorage', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     const result = Storage.saveWorkout(state);
     TestRunner.assertTrue(result);
   });
 
   TestRunner.test('Storage.loadWorkout - loads saved state', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     state.sections[1].completed = 50; // Add some progress
     Storage.saveWorkout(state);
     
@@ -342,20 +371,20 @@ function runStorageTests() {
   });
 
   TestRunner.test('Storage.hasActiveWorkout - returns false for fresh workout', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     Storage.saveWorkout(state);
     TestRunner.assertFalse(Storage.hasActiveWorkout());
   });
 
   TestRunner.test('Storage.hasActiveWorkout - returns true for in-progress workout', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     state.sections[1].completed = 50;
     Storage.saveWorkout(state);
     TestRunner.assertTrue(Storage.hasActiveWorkout());
   });
 
   TestRunner.test('Storage.hasActiveWorkout - returns false for completed workout', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     state.sections[1].completed = 50;
     state.isComplete = true;
     Storage.saveWorkout(state);
@@ -363,7 +392,7 @@ function runStorageTests() {
   });
 
   TestRunner.test('Storage.hasActiveWorkout - returns true when run is completed', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     state.sections[0].completed = true; // First run
     Storage.saveWorkout(state);
     TestRunner.assertTrue(Storage.hasActiveWorkout());
@@ -371,7 +400,7 @@ function runStorageTests() {
 
   // Storage.clearWorkout() tests
   TestRunner.test('Storage.clearWorkout - removes saved workout', () => {
-    const state = Storage.getDefaultState(false);
+    const state = Storage.getDefaultState('full');
     Storage.saveWorkout(state);
     TestRunner.assertTrue(Storage.clearWorkout());
     TestRunner.assertEqual(Storage.loadWorkout(), null);
@@ -403,19 +432,19 @@ function runAppTests() {
 
   // Test isWorkoutComplete logic
   TestRunner.test('App.isWorkoutComplete - returns false for fresh workout', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     TestRunner.assertFalse(App.isWorkoutComplete());
   });
 
   TestRunner.test('App.isWorkoutComplete - returns false for partial workout', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     App.state.sections[0].completed = true;
     App.state.sections[1].completed = 100;
     TestRunner.assertFalse(App.isWorkoutComplete());
   });
 
   TestRunner.test('App.isWorkoutComplete - returns true for completed full Murph', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     App.state.sections[0].completed = true;  // Run 1
     App.state.sections[1].completed = 100;   // Pull-ups
     App.state.sections[2].completed = 200;   // Push-ups
@@ -425,7 +454,7 @@ function runAppTests() {
   });
 
   TestRunner.test('App.isWorkoutComplete - returns true for completed half Murph', () => {
-    App.state = Storage.getDefaultState(true);
+    App.state = Storage.getDefaultState('half');
     App.state.sections[0].completed = true;  // Run 1
     App.state.sections[1].completed = 50;    // Pull-ups
     App.state.sections[2].completed = 100;   // Push-ups
@@ -434,9 +463,19 @@ function runAppTests() {
     TestRunner.assertTrue(App.isWorkoutComplete());
   });
 
+  TestRunner.test('App.isWorkoutComplete - returns true for completed quarter Murph', () => {
+    App.state = Storage.getDefaultState('quarter');
+    App.state.sections[0].completed = true;  // Run 1
+    App.state.sections[1].completed = 25;    // Pull-ups
+    App.state.sections[2].completed = 50;    // Push-ups
+    App.state.sections[3].completed = 75;    // Squats
+    App.state.sections[4].completed = true;  // Run 2
+    TestRunner.assertTrue(App.isWorkoutComplete());
+  });
+
   // Test generateStatsText
   TestRunner.test('App.generateStatsText - includes workout type for full Murph', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     App.state.timerEnabled = true;
     App.state.elapsedTime = 3661000; // 1:01:01
     const text = App.generateStatsText();
@@ -444,15 +483,23 @@ function runAppTests() {
   });
 
   TestRunner.test('App.generateStatsText - includes workout type for half Murph', () => {
-    App.state = Storage.getDefaultState(true);
+    App.state = Storage.getDefaultState('half');
     App.state.timerEnabled = true;
     App.state.elapsedTime = 1800000;
     const text = App.generateStatsText();
     TestRunner.assertTrue(text.includes('Half Murph'));
   });
 
+  TestRunner.test('App.generateStatsText - includes workout type for quarter Murph', () => {
+    App.state = Storage.getDefaultState('quarter');
+    App.state.timerEnabled = true;
+    App.state.elapsedTime = 900000;
+    const text = App.generateStatsText();
+    TestRunner.assertTrue(text.includes('Quarter Murph'));
+  });
+
   TestRunner.test('App.generateStatsText - includes time when timer enabled', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     App.state.timerEnabled = true;
     App.state.elapsedTime = 3661000;
     const text = App.generateStatsText();
@@ -460,14 +507,14 @@ function runAppTests() {
   });
 
   TestRunner.test('App.generateStatsText - shows "No timer" when timer disabled', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     App.state.timerEnabled = false;
     const text = App.generateStatsText();
     TestRunner.assertTrue(text.includes('No timer'));
   });
 
   TestRunner.test('App.generateStatsText - includes total reps', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     App.state.sections[1].completed = 50;
     App.state.sections[2].completed = 100;
     App.state.sections[3].completed = 150;
@@ -476,7 +523,7 @@ function runAppTests() {
   });
 
   TestRunner.test('App.generateStatsText - includes tribute message', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     const text = App.generateStatsText();
     TestRunner.assertTrue(text.includes('Lt. Michael P. Murphy'));
   });
@@ -498,7 +545,7 @@ function runIntegrationTests() {
 
   // Test addReps functionality
   TestRunner.test('addReps - adds correct amount to section', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     const initialCompleted = App.state.sections[1].completed;
     
     // Simulate addReps logic
@@ -513,7 +560,7 @@ function runIntegrationTests() {
   });
 
   TestRunner.test('addReps - caps at maximum total', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     const section = App.state.sections.find(s => s.id === 'pullups');
     section.completed = 95;
     
@@ -530,7 +577,7 @@ function runIntegrationTests() {
 
   // Test undoReps functionality
   TestRunner.test('undoReps - removes last action amount', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     const section = App.state.sections.find(s => s.id === 'pullups');
     section.completed = 20;
     section.lastAction = 10;
@@ -544,7 +591,7 @@ function runIntegrationTests() {
   });
 
   TestRunner.test('undoReps - does not go below 0', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     const section = App.state.sections.find(s => s.id === 'pullups');
     section.completed = 5;
     section.lastAction = 10;
@@ -558,7 +605,7 @@ function runIntegrationTests() {
 
   // Test toggleRun functionality
   TestRunner.test('toggleRun - toggles run completion', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     const section = App.state.sections.find(s => s.id === 'run1');
     
     TestRunner.assertFalse(section.completed);
@@ -572,7 +619,7 @@ function runIntegrationTests() {
 
   // Test overall progress calculation
   TestRunner.test('Progress calculation - calculates percentage correctly', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     
     // Full Murph: 2 runs (1 each) + 100 pullups + 200 pushups + 300 squats = 602 total
     let completed = 0;
@@ -593,7 +640,7 @@ function runIntegrationTests() {
   });
 
   TestRunner.test('Progress calculation - updates with progress', () => {
-    App.state = Storage.getDefaultState(false);
+    App.state = Storage.getDefaultState('full');
     App.state.sections[0].completed = true;   // Run 1
     App.state.sections[1].completed = 50;     // Half pullups
     
@@ -613,6 +660,24 @@ function runIntegrationTests() {
     TestRunner.assertEqual(completed, 51); // 1 + 50
     const percentage = Math.round((completed / total) * 100);
     TestRunner.assertEqual(percentage, 8); // ~8.5% rounds to 8
+  });
+
+  // Test quarter Murph progress
+  TestRunner.test('Progress calculation - quarter Murph totals', () => {
+    App.state = Storage.getDefaultState('quarter');
+    
+    // Quarter Murph: 2 runs (1 each) + 25 pullups + 50 pushups + 75 squats = 152 total
+    let total = 0;
+    
+    App.state.sections.forEach(section => {
+      if (section.type === 'checkbox') {
+        total += 1;
+      } else {
+        total += section.total;
+      }
+    });
+    
+    TestRunner.assertEqual(total, 152);
   });
 
   // Cleanup

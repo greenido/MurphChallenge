@@ -1,5 +1,5 @@
 /**
- * Storage Module - Handles LocalStorage persistence
+ * Storage Module - Handles LocalStorage persistence & IndexedDB workout history
  */
 
 const Storage = {
@@ -8,13 +8,20 @@ const Storage = {
   
   /**
    * Get default workout state
-   * @param {boolean} isHalfMurph - Whether this is a half Murph workout
+   * @param {string} workoutMode - 'full', 'half', or 'quarter'
    */
-  getDefaultState(isHalfMurph = false) {
-    const multiplier = isHalfMurph ? 0.5 : 1;
+  getDefaultState(workoutMode = 'full') {
+    const multiplier = workoutMode === 'quarter' ? 0.25 : workoutMode === 'half' ? 0.5 : 1;
+    const isHalfMurph = workoutMode === 'half';
+    const isQuarterMurph = workoutMode === 'quarter';
+
+    const runLabel = isQuarterMurph ? 'Quarter Mile Run' : isHalfMurph ? 'Half Mile Run' : 'Mile Run';
+
     return {
       timerEnabled: true,
+      workoutMode: workoutMode,
       isHalfMurph: isHalfMurph,
+      isQuarterMurph: isQuarterMurph,
       startTime: null,
       elapsedTime: 0,
       isPaused: false,
@@ -22,7 +29,7 @@ const Storage = {
       sections: [
         { 
           id: 'run1', 
-          name: isHalfMurph ? 'Half Mile Run #1' : 'Mile Run #1', 
+          name: `${runLabel} #1`, 
           type: 'checkbox', 
           completed: false,
           icon: '🏃'
@@ -56,7 +63,7 @@ const Storage = {
         },
         { 
           id: 'run2', 
-          name: isHalfMurph ? 'Half Mile Run #2' : 'Mile Run #2', 
+          name: `${runLabel} #2`, 
           type: 'checkbox', 
           completed: false,
           icon: '🏃'
@@ -160,3 +167,231 @@ const Storage = {
 
 // Export for use in other modules
 window.Storage = Storage;
+
+
+/**
+ * ResultsDB Module - IndexedDB for workout history
+ */
+const ResultsDB = {
+  DB_NAME: 'MurphChallengeDB',
+  DB_VERSION: 1,
+  STORE_NAME: 'workoutResults',
+  _db: null,
+
+  /**
+   * Open/create the IndexedDB database
+   */
+  async open() {
+    if (this._db) return this._db;
+
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+          const store = db.createObjectStore(this.STORE_NAME, { 
+            keyPath: 'id', 
+            autoIncrement: true 
+          });
+          store.createIndex('date', 'date', { unique: false });
+          store.createIndex('workoutMode', 'workoutMode', { unique: false });
+        }
+      };
+
+      request.onsuccess = (event) => {
+        this._db = event.target.result;
+        resolve(this._db);
+      };
+
+      request.onerror = (event) => {
+        console.error('IndexedDB error:', event.target.error);
+        reject(event.target.error);
+      };
+    });
+  },
+
+  /**
+   * Save a completed workout result
+   * @param {Object} state - The completed workout state
+   */
+  async saveResult(state) {
+    try {
+      const db = await this.open();
+
+      // Calculate summary stats
+      let totalReps = 0;
+      let completedRuns = 0;
+      state.sections.forEach(section => {
+        if (section.type === 'reps') totalReps += section.completed;
+        else if (section.type === 'checkbox' && section.completed) completedRuns++;
+      });
+
+      const isFullyComplete = state.sections.every(section => {
+        if (section.type === 'checkbox') return section.completed;
+        return section.completed >= section.total;
+      });
+
+      const result = {
+        date: new Date().toISOString(),
+        workoutMode: state.workoutMode || (state.isHalfMurph ? 'half' : 'full'),
+        timerEnabled: state.timerEnabled,
+        elapsedTime: state.elapsedTime || 0,
+        formattedTime: state.timerEnabled ? Timer.format(state.elapsedTime || 0) : 'No timer',
+        totalReps: totalReps,
+        completedRuns: completedRuns,
+        isFullyComplete: isFullyComplete,
+        sections: state.sections.map(s => ({
+          id: s.id,
+          name: s.name,
+          type: s.type,
+          total: s.total || (s.type === 'checkbox' ? 1 : 0),
+          completed: s.type === 'checkbox' ? (s.completed ? 1 : 0) : s.completed,
+          icon: s.icon
+        }))
+      };
+
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.STORE_NAME, 'readwrite');
+        const store = tx.objectStore(this.STORE_NAME);
+        const request = store.add(result);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (e) {
+      console.error('Failed to save result to IndexedDB:', e);
+    }
+  },
+
+  /**
+   * Get all workout results, sorted by date descending
+   */
+  async getAllResults() {
+    try {
+      const db = await this.open();
+
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.STORE_NAME, 'readonly');
+        const store = tx.objectStore(this.STORE_NAME);
+        const request = store.getAll();
+        request.onsuccess = () => {
+          const results = request.result || [];
+          // Sort by date descending (newest first)
+          results.sort((a, b) => new Date(b.date) - new Date(a.date));
+          resolve(results);
+        };
+        request.onerror = () => reject(request.error);
+      });
+    } catch (e) {
+      console.error('Failed to load results from IndexedDB:', e);
+      return [];
+    }
+  },
+
+  /**
+   * Delete a single result by ID
+   */
+  async deleteResult(id) {
+    try {
+      const db = await this.open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.STORE_NAME, 'readwrite');
+        const store = tx.objectStore(this.STORE_NAME);
+        const request = store.delete(id);
+        request.onsuccess = () => resolve(true);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (e) {
+      console.error('Failed to delete result:', e);
+      return false;
+    }
+  },
+
+  /**
+   * Clear all results
+   */
+  async clearAll() {
+    try {
+      const db = await this.open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.STORE_NAME, 'readwrite');
+        const store = tx.objectStore(this.STORE_NAME);
+        const request = store.clear();
+        request.onsuccess = () => resolve(true);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (e) {
+      console.error('Failed to clear results:', e);
+      return false;
+    }
+  },
+
+  /**
+   * Export all results to CSV string
+   */
+  async exportToCSV() {
+    const results = await this.getAllResults();
+    if (!results.length) return null;
+
+    // CSV Header
+    const headers = [
+      'Date',
+      'Workout Mode',
+      'Time',
+      'Total Reps',
+      'Runs Completed',
+      'Pull-ups',
+      'Push-ups',
+      'Squats',
+      'Fully Complete'
+    ];
+
+    const rows = results.map(r => {
+      const pullups = r.sections.find(s => s.id === 'pullups');
+      const pushups = r.sections.find(s => s.id === 'pushups');
+      const squats = r.sections.find(s => s.id === 'squats');
+
+      return [
+        new Date(r.date).toLocaleString(),
+        r.workoutMode.charAt(0).toUpperCase() + r.workoutMode.slice(1),
+        r.formattedTime,
+        r.totalReps,
+        r.completedRuns,
+        pullups ? `${pullups.completed}/${pullups.total}` : '0',
+        pushups ? `${pushups.completed}/${pushups.total}` : '0',
+        squats ? `${squats.completed}/${squats.total}` : '0',
+        r.isFullyComplete ? 'Yes' : 'No'
+      ];
+    });
+
+    // Build CSV string
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    return csvContent;
+  },
+
+  /**
+   * Download CSV file
+   */
+  async downloadCSV() {
+    const csv = await this.exportToCSV();
+    if (!csv) return false;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `murph-challenge-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    return true;
+  }
+};
+
+// Export for use in other modules
+window.ResultsDB = ResultsDB;
