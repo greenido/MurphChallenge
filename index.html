@@ -177,24 +177,26 @@
           </label>
         </div>
         
-        <!-- Half Murph Option -->
+        <!-- Workout Mode Selector -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
-          <label class="flex items-center justify-between cursor-pointer">
-            <div class="flex items-center gap-3">
-              <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
-              </svg>
-              <div>
-                <span class="font-semibold text-lg">Half Murph</span>
-                <p class="text-xs text-gray-500 dark:text-gray-400">50% of all exercises</p>
-              </div>
-            </div>
-            <div class="relative">
-              <input type="checkbox" id="half-murph-toggle" class="sr-only peer">
-              <div class="w-14 h-8 bg-gray-300 dark:bg-gray-600 peer-checked:bg-amber-500 rounded-full transition-colors"></div>
-              <div class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full shadow-md transform peer-checked:translate-x-6 transition-transform"></div>
-            </div>
-          </label>
+          <div class="flex items-center gap-3 mb-4">
+            <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+            </svg>
+            <span class="font-semibold text-lg">Workout Mode</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
+            <button id="mode-full" data-mode="full" class="workout-mode-btn py-3 px-2 rounded-lg text-sm font-bold transition-all bg-murph-accent text-white shadow-md">
+              Full
+            </button>
+            <button id="mode-half" data-mode="half" class="workout-mode-btn py-3 px-2 rounded-lg text-sm font-bold transition-all text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">
+              Half
+            </button>
+            <button id="mode-quarter" data-mode="quarter" class="workout-mode-btn py-3 px-2 rounded-lg text-sm font-bold transition-all text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">
+              Quarter
+            </button>
+          </div>
+          <p id="mode-description" class="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">100 pull-ups, 200 push-ups, 300 squats</p>
         </div>
       </div>
       
@@ -206,6 +208,14 @@
       <!-- Resume Button (hidden by default) -->
       <button id="resume-btn" class="btn-press hidden w-full max-w-sm mt-4 py-4 px-8 bg-amber-500 text-white text-lg font-bold rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all focus:outline-none focus:ring-4 focus:ring-amber-500/50">
         Resume Previous Workout
+      </button>
+      
+      <!-- History Button -->
+      <button id="history-btn" class="btn-press w-full max-w-sm mt-4 py-4 px-8 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-lg font-bold rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all focus:outline-none focus:ring-4 focus:ring-gray-300/50 dark:focus:ring-gray-600/50 flex items-center justify-center gap-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+        </svg>
+        Workout History
       </button>
     </main>
   </div>
@@ -316,11 +326,11 @@
       
       <!-- Workout Type Badge -->
       <div id="workout-type-badge" class="hidden mb-6">
-        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-sm font-semibold">
+        <span id="workout-type-badge-text" class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-sm font-semibold">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
           </svg>
-          Half Murph
+          <span id="workout-type-label">Half Murph</span>
         </span>
       </div>
       
@@ -461,7 +471,7 @@
             <span>1/2</span> Half Murph Option
           </h3>
           <p class="text-gray-600 dark:text-gray-400 mb-3">
-            New to the Murph or scaling down? Enable <strong>Half Murph</strong> mode:
+            New to the Murph or scaling down? Choose <strong>Half Murph</strong> mode:
           </p>
           <div class="bg-gray-100 dark:bg-gray-700/50 rounded-xl p-4 space-y-2">
             <div class="flex items-center gap-3">
@@ -483,6 +493,38 @@
             <div class="flex items-center gap-3">
               <span class="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-sm">5</span>
               <span>1/2-mile run</span>
+            </div>
+          </div>
+        </section>
+        
+        <!-- Quarter Murph -->
+        <section>
+          <h3 class="text-lg font-bold text-blue-500 mb-3 flex items-center gap-2">
+            <span>1/4</span> Quarter Murph Option
+          </h3>
+          <p class="text-gray-600 dark:text-gray-400 mb-3">
+            Starting out or need a lighter session? Choose <strong>Quarter Murph</strong> mode:
+          </p>
+          <div class="bg-gray-100 dark:bg-gray-700/50 rounded-xl p-4 space-y-2">
+            <div class="flex items-center gap-3">
+              <span class="w-8 h-8 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold text-sm">1</span>
+              <span>1/4-mile run</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="w-8 h-8 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold text-sm">2</span>
+              <span>25 pull-ups</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="w-8 h-8 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold text-sm">3</span>
+              <span>50 push-ups</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="w-8 h-8 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold text-sm">4</span>
+              <span>75 squats</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="w-8 h-8 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold text-sm">5</span>
+              <span>1/4-mile run</span>
             </div>
           </div>
         </section>
@@ -694,6 +736,101 @@
     </div>
   </div>
   
+  <!-- ==================== HISTORY MODAL ==================== -->
+  <div id="history-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <!-- Backdrop -->
+    <div id="history-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    
+    <!-- Modal Content -->
+    <div class="relative z-10 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+      <!-- Modal Header -->
+      <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between flex-shrink-0">
+        <h2 class="text-xl font-bold flex items-center gap-2">
+          <svg class="w-6 h-6 text-murph-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+          Workout History
+        </h2>
+        <button id="close-history-btn" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Modal Body -->
+      <div id="history-content" class="flex-1 overflow-y-auto p-4">
+        <!-- Populated by JS -->
+        <p class="text-center text-gray-500 dark:text-gray-400 py-12">Loading...</p>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div id="history-footer" class="hidden sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
+        <div class="flex gap-3">
+          <button id="clear-history-btn" class="btn-press flex-1 py-3 px-4 bg-red-500/10 text-red-500 font-semibold rounded-xl hover:bg-red-500/20 transition-colors text-sm">
+            Clear All
+          </button>
+          <button id="export-csv-btn" class="btn-press flex-[2] py-3 px-4 bg-murph-accent text-white font-semibold rounded-xl hover:bg-murph-primary transition-colors flex items-center justify-center gap-2 text-sm">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Export CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CLEAR HISTORY CONFIRMATION MODAL ==================== -->
+  <div id="clear-history-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div id="clear-history-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative z-10 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full p-6">
+      <h3 class="text-xl font-bold mb-3">Clear All History?</h3>
+      <p class="text-gray-600 dark:text-gray-400 mb-6">
+        This will permanently delete all your saved workout results. This action cannot be undone.
+      </p>
+      <div class="flex gap-3">
+        <button id="cancel-clear-history-btn" class="btn-press flex-1 py-3 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+          Cancel
+        </button>
+        <button id="confirm-clear-history-btn" class="btn-press flex-1 py-3 px-4 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors">
+          Clear All
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DELETE WORKOUT CONFIRMATION MODAL ==================== -->
+  <div id="delete-workout-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div id="delete-workout-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative z-10 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full p-6">
+      <h3 class="text-xl font-bold mb-3">Delete Workout?</h3>
+      <p class="text-gray-600 dark:text-gray-400 mb-6">
+        This workout will be permanently removed from your history. This cannot be undone.
+      </p>
+      <div class="flex gap-3">
+        <button id="cancel-delete-workout-btn" class="btn-press flex-1 py-3 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+          Cancel
+        </button>
+        <button id="confirm-delete-workout-btn" class="btn-press flex-1 py-3 px-4 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MESSAGE MODAL (toast-style info) ==================== -->
+  <div id="message-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div id="message-modal-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative z-10 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full p-6">
+      <h3 id="message-modal-title" class="text-xl font-bold mb-2">Message</h3>
+      <p id="message-modal-body" class="text-gray-600 dark:text-gray-400 mb-6">.</p>
+      <button id="message-modal-ok-btn" class="btn-press w-full py-3 px-4 bg-murph-accent text-white font-semibold rounded-xl hover:bg-murph-primary transition-colors">
+        OK
+      </button>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="js/confetti.js"></script>
   <script src="js/storage.js"></script>

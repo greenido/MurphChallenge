@@ -6,6 +6,7 @@ const App = {
   state: null,
   elements: {},
   deferredInstallPrompt: null, // For Android's beforeinstallprompt
+  selectedWorkoutMode: 'full', // Default workout mode
   
   /**
    * Initialize the application
@@ -16,6 +17,9 @@ const App = {
     this.bindEvents();
     this.checkForSavedWorkout();
     this.initInstallPrompt();
+    this.initWorkoutModeSelector();
+    // Pre-open the IndexedDB database
+    ResultsDB.open().catch(() => {});
   },
   
   /**
@@ -30,11 +34,17 @@ const App = {
       
       // Start screen
       timerToggle: document.getElementById('timer-toggle'),
-      halfMurphToggle: document.getElementById('half-murph-toggle'),
       startBtn: document.getElementById('start-btn'),
       resumeBtn: document.getElementById('resume-btn'),
+      historyBtn: document.getElementById('history-btn'),
       helpBtnStart: document.getElementById('help-btn-start'),
       themeToggle: document.getElementById('theme-toggle'),
+      modeDescription: document.getElementById('mode-description'),
+      
+      // Workout mode buttons
+      modeFull: document.getElementById('mode-full'),
+      modeHalf: document.getElementById('mode-half'),
+      modeQuarter: document.getElementById('mode-quarter'),
       
       // Workout screen
       timerHeader: document.getElementById('timer-header'),
@@ -55,6 +65,7 @@ const App = {
       statsRuns: document.getElementById('stats-runs'),
       statsReps: document.getElementById('stats-reps'),
       workoutTypeBadge: document.getElementById('workout-type-badge'),
+      workoutTypeLabel: document.getElementById('workout-type-label'),
       copyStatsBtn: document.getElementById('copy-stats-btn'),
       shareTwitterBtn: document.getElementById('share-twitter-btn'),
       shareFacebookBtn: document.getElementById('share-facebook-btn'),
@@ -74,6 +85,34 @@ const App = {
       finishEarlyBackdrop: document.getElementById('finish-early-backdrop'),
       cancelFinishEarlyBtn: document.getElementById('cancel-finish-early-btn'),
       confirmFinishEarlyBtn: document.getElementById('confirm-finish-early-btn'),
+      
+      // History modal
+      historyModal: document.getElementById('history-modal'),
+      historyBackdrop: document.getElementById('history-backdrop'),
+      closeHistoryBtn: document.getElementById('close-history-btn'),
+      historyContent: document.getElementById('history-content'),
+      historyFooter: document.getElementById('history-footer'),
+      clearHistoryBtn: document.getElementById('clear-history-btn'),
+      exportCsvBtn: document.getElementById('export-csv-btn'),
+      
+      // Clear history confirmation modal
+      clearHistoryModal: document.getElementById('clear-history-modal'),
+      clearHistoryBackdrop: document.getElementById('clear-history-backdrop'),
+      cancelClearHistoryBtn: document.getElementById('cancel-clear-history-btn'),
+      confirmClearHistoryBtn: document.getElementById('confirm-clear-history-btn'),
+      
+      // Delete single workout confirmation modal
+      deleteWorkoutModal: document.getElementById('delete-workout-modal'),
+      deleteWorkoutBackdrop: document.getElementById('delete-workout-backdrop'),
+      cancelDeleteWorkoutBtn: document.getElementById('cancel-delete-workout-btn'),
+      confirmDeleteWorkoutBtn: document.getElementById('confirm-delete-workout-btn'),
+      
+      // Message modal (info/toast)
+      messageModal: document.getElementById('message-modal'),
+      messageModalBackdrop: document.getElementById('message-modal-backdrop'),
+      messageModalTitle: document.getElementById('message-modal-title'),
+      messageModalBody: document.getElementById('message-modal-body'),
+      messageModalOkBtn: document.getElementById('message-modal-ok-btn'),
       
       // Install modal
       installBtn: document.getElementById('install-btn'),
@@ -96,6 +135,41 @@ const App = {
   },
   
   /**
+   * Initialize workout mode selector
+   */
+  initWorkoutModeSelector() {
+    const modeDescriptions = {
+      full: '100 pull-ups, 200 push-ups, 300 squats',
+      half: '50 pull-ups, 100 push-ups, 150 squats',
+      quarter: '25 pull-ups, 50 push-ups, 75 squats'
+    };
+
+    const buttons = document.querySelectorAll('.workout-mode-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.mode;
+        this.selectedWorkoutMode = mode;
+
+        // Update active state for all buttons
+        buttons.forEach(b => {
+          if (b.dataset.mode === mode) {
+            b.classList.add('bg-murph-accent', 'text-white', 'shadow-md');
+            b.classList.remove('text-gray-600', 'dark:text-gray-300', 'hover:bg-gray-200', 'dark:hover:bg-gray-600');
+          } else {
+            b.classList.remove('bg-murph-accent', 'text-white', 'shadow-md');
+            b.classList.add('text-gray-600', 'dark:text-gray-300', 'hover:bg-gray-200', 'dark:hover:bg-gray-600');
+          }
+        });
+
+        // Update description
+        if (this.elements.modeDescription) {
+          this.elements.modeDescription.textContent = modeDescriptions[mode];
+        }
+      });
+    });
+  },
+  
+  /**
    * Bind all event listeners
    */
   bindEvents() {
@@ -113,6 +187,9 @@ const App = {
     }
     if (this.elements.helpBtnStart) {
       this.elements.helpBtnStart.addEventListener('click', () => this.showHelp());
+    }
+    if (this.elements.historyBtn) {
+      this.elements.historyBtn.addEventListener('click', () => this.showHistory());
     }
     
     // Workout screen
@@ -160,6 +237,53 @@ const App = {
       this.elements.helpBackdrop.addEventListener('click', () => this.hideHelp());
     }
     
+    // History modal
+    if (this.elements.closeHistoryBtn) {
+      this.elements.closeHistoryBtn.addEventListener('click', () => this.hideHistory());
+    }
+    if (this.elements.historyBackdrop) {
+      this.elements.historyBackdrop.addEventListener('click', () => this.hideHistory());
+    }
+    if (this.elements.clearHistoryBtn) {
+      this.elements.clearHistoryBtn.addEventListener('click', () => this.showClearHistoryModal());
+    }
+    if (this.elements.exportCsvBtn) {
+      this.elements.exportCsvBtn.addEventListener('click', async () => {
+        const downloaded = await ResultsDB.downloadCSV();
+        if (!downloaded) this.showMessageModal('Nothing to export', 'No workout history to export.');
+      });
+    }
+    
+    // Clear history confirmation modal
+    if (this.elements.cancelClearHistoryBtn) {
+      this.elements.cancelClearHistoryBtn.addEventListener('click', () => this.hideClearHistoryModal());
+    }
+    if (this.elements.clearHistoryBackdrop) {
+      this.elements.clearHistoryBackdrop.addEventListener('click', () => this.hideClearHistoryModal());
+    }
+    if (this.elements.confirmClearHistoryBtn) {
+      this.elements.confirmClearHistoryBtn.addEventListener('click', () => this.confirmClearHistory());
+    }
+    
+    // Delete single workout modal
+    if (this.elements.cancelDeleteWorkoutBtn) {
+      this.elements.cancelDeleteWorkoutBtn.addEventListener('click', () => this.hideDeleteWorkoutModal());
+    }
+    if (this.elements.deleteWorkoutBackdrop) {
+      this.elements.deleteWorkoutBackdrop.addEventListener('click', () => this.hideDeleteWorkoutModal());
+    }
+    if (this.elements.confirmDeleteWorkoutBtn) {
+      this.elements.confirmDeleteWorkoutBtn.addEventListener('click', () => this.confirmDeleteWorkout());
+    }
+    
+    // Message modal
+    if (this.elements.messageModalOkBtn) {
+      this.elements.messageModalOkBtn.addEventListener('click', () => this.hideMessageModal());
+    }
+    if (this.elements.messageModalBackdrop) {
+      this.elements.messageModalBackdrop.addEventListener('click', () => this.hideMessageModal());
+    }
+    
     // ESC key to close modals
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -174,6 +298,15 @@ const App = {
         }
         if (this.elements.installModal && !this.elements.installModal.classList.contains('hidden')) {
           this.hideInstallModal();
+        }
+        if (this.elements.clearHistoryModal && !this.elements.clearHistoryModal.classList.contains('hidden')) {
+          this.hideClearHistoryModal();
+        } else if (this.elements.deleteWorkoutModal && !this.elements.deleteWorkoutModal.classList.contains('hidden')) {
+          this.hideDeleteWorkoutModal();
+        } else if (this.elements.messageModal && !this.elements.messageModal.classList.contains('hidden')) {
+          this.hideMessageModal();
+        } else if (this.elements.historyModal && !this.elements.historyModal.classList.contains('hidden')) {
+          this.hideHistory();
         }
       }
     });
@@ -237,9 +370,9 @@ const App = {
    */
   startNewWorkout() {
     const timerEnabled = this.elements.timerToggle ? this.elements.timerToggle.checked : true;
-    const isHalfMurph = this.elements.halfMurphToggle ? this.elements.halfMurphToggle.checked : false;
+    const workoutMode = this.selectedWorkoutMode;
     
-    this.state = Storage.getDefaultState(isHalfMurph);
+    this.state = Storage.getDefaultState(workoutMode);
     this.state.timerEnabled = timerEnabled;
     
     if (timerEnabled) {
@@ -579,11 +712,6 @@ const App = {
    * Update overall progress display
    */
   updateOverallProgress() {
-    // Calculate total progress
-    // Runs count as 1 unit each (2 total), reps count as 600 total
-    // Total units: 2 (runs) + 600 (reps) = 602
-    // But for simplicity, let's do percentage based on: 2 runs + 3 rep exercises
-    
     let completed = 0;
     let total = 0;
     
@@ -679,6 +807,11 @@ const App = {
     this.state.elapsedTime = finalElapsed;
     Storage.saveWorkout(this.state);
     
+    // Save to IndexedDB history
+    ResultsDB.saveResult(this.state).catch(err => {
+      console.error('Failed to save to history:', err);
+    });
+    
     // Show completion screen
     this.elements.workoutScreen.classList.add('hidden');
     this.elements.completionScreen.classList.remove('hidden');
@@ -718,9 +851,13 @@ const App = {
     this.elements.statsRuns.textContent = completedRuns.toString();
     this.elements.statsReps.textContent = totalReps.toString();
     
-    // Show/hide half murph badge
-    if (this.state.isHalfMurph) {
+    // Show/hide workout type badge
+    const mode = this.state.workoutMode || (this.state.isHalfMurph ? 'half' : 'full');
+    if (mode !== 'full') {
       this.elements.workoutTypeBadge.classList.remove('hidden');
+      if (this.elements.workoutTypeLabel) {
+        this.elements.workoutTypeLabel.textContent = mode === 'quarter' ? 'Quarter Murph' : 'Half Murph';
+      }
     } else {
       this.elements.workoutTypeBadge.classList.add('hidden');
     }
@@ -730,7 +867,8 @@ const App = {
    * Generate stats text for sharing
    */
   generateStatsText() {
-    const workoutType = this.state.isHalfMurph ? 'Half Murph' : 'Murph Challenge';
+    const mode = this.state.workoutMode || (this.state.isHalfMurph ? 'half' : 'full');
+    const workoutType = mode === 'quarter' ? 'Quarter Murph' : mode === 'half' ? 'Half Murph' : 'Murph Challenge';
     const timeText = this.state.timerEnabled ? Timer.format(this.state.elapsedTime) : 'No timer';
     
     // Check if workout was fully completed
@@ -785,7 +923,7 @@ const App = {
       }, 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
-      alert('Failed to copy to clipboard');
+      this.showMessageModal('Copy failed', 'Failed to copy to clipboard.');
     }
   },
   
@@ -793,7 +931,8 @@ const App = {
    * Generate short share text for social media
    */
   generateShareText() {
-    const workoutType = this.state.isHalfMurph ? 'Half Murph' : 'Murph Challenge';
+    const mode = this.state.workoutMode || (this.state.isHalfMurph ? 'half' : 'full');
+    const workoutType = mode === 'quarter' ? 'Quarter Murph' : mode === 'half' ? 'Half Murph' : 'Murph Challenge';
     const timeText = this.state.timerEnabled ? Timer.format(this.state.elapsedTime) : '';
     
     let totalReps = 0;
@@ -811,7 +950,7 @@ const App = {
     let text = `${workoutType} ${completionStatus}`;
     if (timeText) text += ` | Time: ${timeText}`;
     text += ` | ${totalReps} total reps`;
-    text += ` | In honor of Lt. Michael P. Murphy 🎖️`;
+    text += ` | In honor of Lt. Michael P. Murphy`;
     text += ` #MurphChallenge #Workout #Fitness`;
     
     return text;
@@ -830,7 +969,6 @@ const App = {
    * Share on Facebook (copies full stats to clipboard first)
    */
   async shareOnFacebook() {
-    // Copy full stats to clipboard so user can paste in Facebook
     try {
       await navigator.clipboard.writeText(this.generateStatsText());
       this.showShareToast('Results copied! Paste in your Facebook post.');
@@ -838,7 +976,6 @@ const App = {
       console.error('Failed to copy:', err);
     }
     
-    // Open Facebook share dialog
     const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://greenido.wordpress.com')}`;
     window.open(url, '_blank', 'width=550,height=420');
   },
@@ -856,7 +993,6 @@ const App = {
    * Share on LinkedIn (copies full stats to clipboard first)
    */
   async shareOnLinkedin() {
-    // Copy full stats to clipboard so user can paste in LinkedIn
     try {
       await navigator.clipboard.writeText(this.generateStatsText());
       this.showShareToast('Results copied! Paste in your LinkedIn post.');
@@ -864,7 +1000,6 @@ const App = {
       console.error('Failed to copy:', err);
     }
     
-    // Open LinkedIn share dialog
     const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://greenido.wordpress.com')}`;
     window.open(url, '_blank', 'width=550,height=420');
   },
@@ -873,11 +1008,9 @@ const App = {
    * Show a toast notification for share actions
    */
   showShareToast(message) {
-    // Remove existing toast if any
     const existingToast = document.getElementById('share-toast');
     if (existingToast) existingToast.remove();
     
-    // Create toast element
     const toast = document.createElement('div');
     toast.id = 'share-toast';
     toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-gray-900 dark:bg-gray-700 text-white px-4 py-3 rounded-xl shadow-lg z-[200] flex items-center gap-2 animate-pulse';
@@ -890,13 +1023,247 @@ const App = {
     
     document.body.appendChild(toast);
     
-    // Remove toast after 3 seconds
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transition = 'opacity 0.3s ease';
       setTimeout(() => toast.remove(), 300);
     }, 3000);
   },
+  
+  // ==================== HISTORY ==================== 
+  
+  /**
+   * Show workout history modal
+   */
+  async showHistory() {
+    if (!this.elements.historyModal) return;
+    
+    this.elements.historyModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Load and render history
+    await this.renderHistory();
+  },
+  
+  /**
+   * Hide workout history modal
+   */
+  hideHistory() {
+    if (!this.elements.historyModal) return;
+    this.elements.historyModal.classList.add('hidden');
+    document.body.style.overflow = '';
+  },
+  
+  /**
+   * Render workout history in the modal
+   */
+  async renderHistory() {
+    const content = this.elements.historyContent;
+    const footer = this.elements.historyFooter;
+    if (!content) return;
+    
+    try {
+      const results = await ResultsDB.getAllResults();
+      
+      if (!results || results.length === 0) {
+        content.innerHTML = `
+          <div class="text-center py-16">
+            <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
+              <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-500 dark:text-gray-400 mb-2">No Workouts Yet</h3>
+            <p class="text-sm text-gray-400 dark:text-gray-500">Complete a workout and it will appear here.</p>
+          </div>
+        `;
+        if (footer) footer.classList.add('hidden');
+        return;
+      }
+      
+      // Show footer with buttons
+      if (footer) footer.classList.remove('hidden');
+      
+      // Build history cards
+      let html = `<div class="space-y-3">`;
+      
+      results.forEach((result, index) => {
+        const date = new Date(result.date);
+        const dateStr = date.toLocaleDateString(undefined, { 
+          year: 'numeric', month: 'short', day: 'numeric' 
+        });
+        const timeStr = date.toLocaleTimeString(undefined, { 
+          hour: '2-digit', minute: '2-digit' 
+        });
+        
+        const modeLabel = result.workoutMode 
+          ? result.workoutMode.charAt(0).toUpperCase() + result.workoutMode.slice(1) 
+          : 'Full';
+        
+        const modeColor = result.workoutMode === 'quarter' 
+          ? 'bg-blue-500/20 text-blue-500' 
+          : result.workoutMode === 'half' 
+            ? 'bg-amber-500/20 text-amber-500' 
+            : 'bg-murph-accent/20 text-murph-accent';
+        
+        const statusIcon = result.isFullyComplete 
+          ? '<svg class="w-5 h-5 text-murph-accent" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+          : '<svg class="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>';
+        
+        // Build section details
+        const pullups = result.sections.find(s => s.id === 'pullups');
+        const pushups = result.sections.find(s => s.id === 'pushups');
+        const squats = result.sections.find(s => s.id === 'squats');
+        
+        html += `
+          <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  ${statusIcon}
+                  <span class="font-bold">${dateStr}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">${timeStr}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${modeColor}">
+                    ${modeLabel}
+                  </span>
+                  <span class="text-sm text-gray-500 dark:text-gray-400">${result.formattedTime}</span>
+                </div>
+              </div>
+              <button 
+                data-delete-id="${result.id}" 
+                class="history-delete-btn p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors" 
+                aria-label="Delete this result"
+                title="Delete"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
+                <p class="text-sm font-bold text-murph-accent">${pullups ? pullups.completed : 0}</p>
+                <p class="text-xs text-gray-500">Pull-ups</p>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
+                <p class="text-sm font-bold text-murph-accent">${pushups ? pushups.completed : 0}</p>
+                <p class="text-xs text-gray-500">Push-ups</p>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
+                <p class="text-sm font-bold text-murph-accent">${squats ? squats.completed : 0}</p>
+                <p class="text-xs text-gray-500">Squats</p>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `</div>`;
+      
+      // Show count
+      html = `
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm text-gray-500 dark:text-gray-400">${results.length} workout${results.length !== 1 ? 's' : ''} recorded</p>
+        </div>
+      ` + html;
+      
+      content.innerHTML = html;
+      
+      // Bind delete buttons
+      content.querySelectorAll('.history-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = parseInt(e.currentTarget.dataset.deleteId);
+          if (id) this.showDeleteWorkoutModal(id);
+        });
+      });
+      
+    } catch (err) {
+      console.error('Failed to render history:', err);
+      content.innerHTML = `
+        <div class="text-center py-12">
+          <p class="text-red-500">Failed to load workout history.</p>
+          <p class="text-sm text-gray-500 mt-2">Please try again later.</p>
+        </div>
+      `;
+    }
+  },
+  
+  /**
+   * Show clear history confirmation modal
+   */
+  showClearHistoryModal() {
+    if (!this.elements.clearHistoryModal) return;
+    this.elements.clearHistoryModal.classList.remove('hidden');
+  },
+  
+  /**
+   * Hide clear history confirmation modal
+   */
+  hideClearHistoryModal() {
+    if (!this.elements.clearHistoryModal) return;
+    this.elements.clearHistoryModal.classList.add('hidden');
+  },
+  
+  /**
+   * Confirm clearing all history
+   */
+  async confirmClearHistory() {
+    await ResultsDB.clearAll();
+    this.hideClearHistoryModal();
+    await this.renderHistory();
+  },
+  
+  /**
+   * Show delete single workout confirmation modal
+   */
+  showDeleteWorkoutModal(id) {
+    if (!this.elements.deleteWorkoutModal) return;
+    this.pendingDeleteWorkoutId = id;
+    this.elements.deleteWorkoutModal.classList.remove('hidden');
+  },
+  
+  /**
+   * Hide delete workout modal
+   */
+  hideDeleteWorkoutModal() {
+    if (!this.elements.deleteWorkoutModal) return;
+    this.pendingDeleteWorkoutId = null;
+    this.elements.deleteWorkoutModal.classList.add('hidden');
+  },
+  
+  /**
+   * Confirm deleting the single workout
+   */
+  async confirmDeleteWorkout() {
+    const id = this.pendingDeleteWorkoutId;
+    this.hideDeleteWorkoutModal();
+    if (id) {
+      await ResultsDB.deleteResult(id);
+      await this.renderHistory();
+    }
+  },
+  
+  /**
+   * Show message modal (info / toast-style)
+   */
+  showMessageModal(title, message) {
+    if (!this.elements.messageModal) return;
+    if (this.elements.messageModalTitle) this.elements.messageModalTitle.textContent = title;
+    if (this.elements.messageModalBody) this.elements.messageModalBody.textContent = message;
+    this.elements.messageModal.classList.remove('hidden');
+  },
+  
+  /**
+   * Hide message modal
+   */
+  hideMessageModal() {
+    if (!this.elements.messageModal) return;
+    this.elements.messageModal.classList.add('hidden');
+  },
+  
+  // ==================== MODALS ==================== 
   
   /**
    * Show help modal
@@ -965,7 +1332,6 @@ const App = {
       || window.navigator.standalone === true;
     
     if (isStandalone) {
-      // App is already installed, don't show install button
       return;
     }
     
@@ -979,10 +1345,8 @@ const App = {
     const isMobile = this.isMobileDevice();
     
     if (isMobile && this.elements.installBtn) {
-      // Show install button on mobile
       this.elements.installBtn.classList.remove('hidden');
       
-      // Auto-show install modal after a delay on first visit (only once)
       const hasSeenInstallPrompt = localStorage.getItem('murph_install_seen');
       if (!hasSeenInstallPrompt) {
         setTimeout(() => {
@@ -994,12 +1358,9 @@ const App = {
     
     // Listen for beforeinstallprompt (Android/Chrome)
     window.addEventListener('beforeinstallprompt', (e) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Save the event so it can be triggered later
       this.deferredInstallPrompt = e;
       
-      // Show install button
       if (this.elements.installBtn) {
         this.elements.installBtn.classList.remove('hidden');
       }
@@ -1007,12 +1368,10 @@ const App = {
     
     // Listen for successful install
     window.addEventListener('appinstalled', () => {
-      // Hide install button
       if (this.elements.installBtn) {
         this.elements.installBtn.classList.add('hidden');
       }
       this.hideInstallModal();
-      // Clear deferred prompt
       this.deferredInstallPrompt = null;
     });
   },
@@ -1039,7 +1398,6 @@ const App = {
   showInstallModal() {
     if (!this.elements.installModal) return;
     
-    // Determine platform and show appropriate instructions
     const isIOS = this.isIOS();
     
     if (this.elements.iosInstructions) {
@@ -1049,10 +1407,8 @@ const App = {
       this.elements.androidInstructions.classList.toggle('hidden', isIOS);
     }
     
-    // Show native install button if we have a deferred prompt (Android)
     if (this.elements.nativeInstallBtn) {
       this.elements.nativeInstallBtn.classList.toggle('hidden', !this.deferredInstallPrompt);
-      // Hide manual instructions if native prompt available
       if (this.deferredInstallPrompt && this.elements.androidInstructions) {
         this.elements.androidInstructions.classList.add('hidden');
       }
@@ -1068,10 +1424,8 @@ const App = {
   hideInstallModal() {
     if (!this.elements.installModal) return;
     
-    // Check if user doesn't want to see again
     if (this.elements.dontShowInstall && this.elements.dontShowInstall.checked) {
       localStorage.setItem('murph_install_dismissed', 'true');
-      // Also hide the install button
       if (this.elements.installBtn) {
         this.elements.installBtn.classList.add('hidden');
       }
@@ -1087,21 +1441,16 @@ const App = {
   async triggerNativeInstall() {
     if (!this.deferredInstallPrompt) return;
     
-    // Show the install prompt
     this.deferredInstallPrompt.prompt();
     
-    // Wait for the user to respond to the prompt
     const { outcome } = await this.deferredInstallPrompt.userChoice;
     
     if (outcome === 'accepted') {
-      // User accepted, hide modal
       this.hideInstallModal();
     }
     
-    // Clear the deferred prompt
     this.deferredInstallPrompt = null;
     
-    // Hide the native install button
     if (this.elements.nativeInstallBtn) {
       this.elements.nativeInstallBtn.classList.add('hidden');
     }
